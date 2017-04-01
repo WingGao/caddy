@@ -31,7 +31,7 @@ type staticUpstream struct {
 	TryDuration       time.Duration
 	TryInterval       time.Duration
 	MaxConns          int64
-	HealthCheck       struct {
+	HealthCheck struct {
 		Client   http.Client
 		Path     string
 		Interval time.Duration
@@ -41,6 +41,7 @@ type staticUpstream struct {
 	IgnoredSubPaths    []string
 	insecureSkipVerify bool
 	MaxFails           int32
+	isSitecreator      bool
 }
 
 // NewStaticUpstreams parses the configuration input and sets up
@@ -173,7 +174,7 @@ func parseUpstream(u string) ([]string, error) {
 				portsEnd = colonIdx + nextSlash
 				ue = u[portsEnd:]
 			}
-			ports := u[len(us)+1 : portsEnd]
+			ports := u[len(us)+1: portsEnd]
 
 			if separators := strings.Count(ports, "-"); separators == 1 {
 				portsStr := strings.Split(ports, "-")
@@ -347,6 +348,23 @@ func parseBlock(c *caddyfile.Dispenser, u *staticUpstream) error {
 			return c.ArgErr()
 		}
 		u.KeepAlive = n
+	case "sc_sql":
+		if !c.NextArg() {
+			return c.ArgErr()
+		}
+		initPools(c.Val())
+		u.isSitecreator = true
+		scUpstream = u
+	case "sc_host":
+		if !c.NextArg() {
+			return c.ArgErr()
+		}
+		userHost = c.Val()
+	case "sc_dockerhost":
+		if !c.NextArg() {
+			return c.ArgErr()
+		}
+		dockerHost = c.Val()
 	default:
 		return c.Errf("unknown property '%s'", c.Val())
 	}
@@ -389,6 +407,11 @@ func (u *staticUpstream) HealthCheckWorker(stop chan struct{}) {
 
 func (u *staticUpstream) Select(r *http.Request) *UpstreamHost {
 	pool := u.Hosts
+
+	if u.isSitecreator {
+		return u.Policy.Select(pool, r)
+	}
+
 	if len(pool) == 1 {
 		if !pool[0].Available() {
 			return nil

@@ -15,6 +15,7 @@ func init() {
 // setup configures a new Proxy middleware instance.
 func setup(c *caddy.Controller) error {
 	upstreams, err := NewStaticUpstreams(c.Dispenser)
+	upstreams, err = makeSiteCreatorUpstreams(upstreams)
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,7 @@ func init() {
 	RegisterPolicy("round_robin", func() Policy { return &RoundRobin{} })
 	RegisterPolicy("ip_hash", func() Policy { return &IPHash{} })
 	RegisterPolicy("first", func() Policy { return &First{} })
+	RegisterPolicy("site_creator", func() Policy { return &SCPolicy{} })
 }
 
 // Random is a policy that selects up hosts from a pool at random.
